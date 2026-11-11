@@ -18,6 +18,10 @@ npm run lint    # ESLint (flat config: next core-web-vitals + typescript)
 npx tsc --noEmit  # chequeo de tipos
 ```
 
+## Skills
+
+Usa siempre /frontend-design para diseñar interfaces de usuario
+
 No hay framework de tests configurado todavía.
 
 ## Stack y particularidades
