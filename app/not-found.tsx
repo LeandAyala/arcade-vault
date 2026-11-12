@@ -20,7 +20,7 @@ export default function NotFound() {
           JUEGO NO ENCONTRADO
         </div>
         <p style={{ marginBottom: 28 }}>Revisa la dirección o elige otro juego de la biblioteca.</p>
-        <Link href="/" className="btn">
+        <Link href="/biblioteca" className="btn">
           VOLVER AL VAULT
         </Link>
       </div>
