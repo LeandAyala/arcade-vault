@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { GamePlayer } from "@/components/game-player";
 import { GAMES, getGame } from "@/lib/data";
+import { getSessionProfile } from "@/lib/session";
 
 export function generateStaticParams() {
   return GAMES.map((g) => ({ id: g.id }));
@@ -30,5 +31,9 @@ async function GamePlayerScreen({ params }: { params: Params }) {
   const game = getGame(id);
   if (!game) notFound();
 
-  return <GamePlayer game={{ id: game.id, title: game.title }} />;
+  // Alias de sesión (SPEC 04) en mayúsculas, o INVITADO. Lee cookies: va dentro del <Suspense>.
+  const profile = await getSessionProfile();
+  const playerName = profile ? profile.username.toUpperCase() : "INVITADO";
+
+  return <GamePlayer game={{ id: game.id, title: game.title }} playerName={playerName} />;
 }
