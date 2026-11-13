@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useSelectedLayoutSegment } from "next/navigation";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
+import { useFormStatus } from "react-dom";
 
 type Section = "inicio" | "biblioteca" | "salon" | "about" | "auth";
 
@@ -27,7 +28,38 @@ const LINKS: { href: string; label: string; section: Section }[] = [
   { href: "/acerca-de", label: "Acerca de", section: "about" },
 ];
 
-export function Nav() {
+/** "Iniciar Sesión" sin sesión. En el panel móvil se marca activo en /auth. */
+export function NavAuthLink({ variant }: { variant: "desktop" | "mobile" }) {
+  const segment = useSelectedLayoutSegment();
+  if (variant === "desktop") {
+    return (
+      <Link href="/auth" className="btn auth-btn">
+        Iniciar Sesión
+      </Link>
+    );
+  }
+  return (
+    <Link href="/auth" className={sectionFor(segment) === "auth" ? "active" : ""}>
+      Iniciar Sesión
+    </Link>
+  );
+}
+
+/** Botón SALIR del `<form action={signOut}>`: deshabilitado mientras la acción está en curso. */
+export function SignOutButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button type="submit" className="btn ghost signout-btn" disabled={pending} aria-busy={pending}>
+      {pending ? "SALIENDO…" : "SALIR"}
+    </button>
+  );
+}
+
+/**
+ * `account` y `mobileAccount` son slots de servidor (`<NavAccount>` dentro de `<Suspense>`), que
+ * el layout pasa ya resueltos: el Nav sigue siendo cliente y el shell, estático.
+ */
+export function Nav({ account, mobileAccount }: { account: ReactNode; mobileAccount: ReactNode }) {
   const segment = useSelectedLayoutSegment();
   const [open, setOpen] = useState(false);
   const current = sectionFor(segment);
@@ -55,9 +87,9 @@ export function Nav() {
           <span className="coin"></span>
           <span>CRÉDITOS · 03</span>
         </div>
-        <Link href="/auth" className="btn auth-btn" onClick={close}>
-          Iniciar Sesión
-        </Link>
+        <div className="av-account-slot" onClick={close}>
+          {account}
+        </div>
         <button
           type="button"
           className="btn ghost hamburger"
@@ -75,9 +107,9 @@ export function Nav() {
           MENÚ
         </div>
         {links}
-        <Link href="/auth" className={cls("auth")} onClick={close}>
-          Iniciar Sesión
-        </Link>
+        <div className="av-account-slot" onClick={close}>
+          {mobileAccount}
+        </div>
         <div style={{ flex: 1 }}></div>
         <div className="pixel" style={{ fontSize: 9, color: "var(--ink-faint)", letterSpacing: "0.16em" }}>
           CRÉDITOS · 03

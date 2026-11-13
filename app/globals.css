@@ -199,11 +199,42 @@ a { color: inherit; text-decoration: none; }
 .av-nav .auth-btn { margin-left: 16px; }
 .av-nav .hamburger { display: none; }
 
+/* ===== área de cuenta (SPEC 04) ===== */
+/* el contenedor del slot (cierra el panel móvil al hacer click) no participa en el layout */
+.av-account-slot { display: contents; }
+.nav-account-placeholder { visibility: hidden; pointer-events: none; }
+/* ficha de jugador: "1P" en el amarillo de los créditos + alias en cyan neón */
+.player-tag {
+  display: inline-flex; align-items: center; gap: 10px;
+  font-family: var(--pixel); font-size: 9px; letter-spacing: 0.16em;
+  color: var(--cyan); text-shadow: 0 0 8px rgba(0,245,255,0.65);
+  white-space: nowrap;
+}
+.player-tag .p1 {
+  padding: 4px 5px 3px;
+  font-size: 7px; letter-spacing: 0.08em;
+  color: var(--bg); background: var(--yellow);
+  box-shadow: 0 0 8px rgba(245,255,0,0.6);
+  text-shadow: none;
+}
+.av-account { display: flex; align-items: center; gap: 14px; margin-left: 16px; }
+.av-account .signout-btn { padding: 10px 14px; font-size: 9px; }
+.signout-btn:disabled { cursor: wait; opacity: 0.6; }
+.av-mobile-account {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 14px;
+  padding: 14px 12px;
+  border-bottom: 1px dashed var(--line-2);
+}
+.av-mobile-account .player-tag { font-size: 11px; }
+.av-mobile-account form, .av-mobile-account .signout-btn { width: 100%; }
+
 @media (max-width: 840px) {
   .av-nav { padding: 12px 16px; }
   .av-nav .links { display: none; }
   .av-nav .coin-counter { display: none; }
   .av-nav .hamburger { display: inline-flex; }
+  /* en la barra móvil solo queda SALIR; el alias se ve en el panel */
+  .av-account .player-tag { display: none; }
 }
 
 .av-mobile-panel {
@@ -859,6 +890,16 @@ a { color: inherit; text-decoration: none; }
 .auth-divider::before, .auth-divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 .social { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .social .btn { padding: 12px; font-size: 9px; }
+/* línea [ERR] sobre el botón del formulario de /auth */
+.auth-error {
+  margin: 2px 0 10px;
+  font-family: var(--mono); font-size: 12px; line-height: 1.5; letter-spacing: 0.04em;
+  color: var(--magenta); text-shadow: 0 0 6px rgba(255,0,110,0.45);
+  overflow-wrap: anywhere;
+}
+/* terminal "REVISA TU CORREO" dentro de la tarjeta de /auth */
+.auth-terminal .term-body { font-size: 12px; overflow-wrap: anywhere; }
+.auth-card .btn:disabled { cursor: wait; opacity: 0.75; }
 
 /* ===== salón ===== */
 .av-hall {
