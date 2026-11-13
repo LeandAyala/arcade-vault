@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { GAMES } from "@/lib/data";
+import { updateSession, withSessionCookies } from "@/lib/supabase/proxy";
 
 /**
  * Con `cacheComponents`, un id fuera de `generateStaticParams` se renderiza en streaming y
@@ -9,12 +10,34 @@ import { GAMES } from "@/lib/data";
  */
 const GAME_IDS = new Set(GAMES.map((g) => g.id));
 
-export function proxy(request: NextRequest) {
-  const id = request.nextUrl.pathname.split("/")[2];
-  if (id && GAME_IDS.has(decodeURIComponent(id))) return NextResponse.next();
-  return NextResponse.rewrite(new URL("/_juego-no-encontrado", request.url));
+/** `/juegos/:id` y `/juegos/:id/jugar`: devuelve el id, o `null` si la ruta no es de juego. */
+function gameIdFor(pathname: string): string | null {
+  const match = /^\/juegos\/([^/]+)(?:\/jugar)?\/?$/.exec(pathname);
+  return match ? match[1] : null;
+}
+
+export async function proxy(request: NextRequest) {
+  // 1. Refresca la sesión de Supabase (sin variables de entorno, deja pasar sin sesión).
+  const { response, hasUser } = await updateSession(request);
+  const { pathname } = request.nextUrl;
+
+  // 2. Con sesión, /auth no tiene sentido: al vault. Solo la ruta exacta (nunca /auth/confirm).
+  if (hasUser && (pathname === "/auth" || pathname === "/auth/")) {
+    return withSessionCookies(response, NextResponse.redirect(new URL("/biblioteca", request.url)));
+  }
+
+  // 3. Validación de juegos, igual que antes, después de refrescar la sesión.
+  const id = gameIdFor(pathname);
+  if (id !== null && !GAME_IDS.has(decodeURIComponent(id))) {
+    return withSessionCookies(response, NextResponse.rewrite(new URL("/_juego-no-encontrado", request.url)));
+  }
+
+  return response;
 }
 
 export const config = {
-  matcher: ["/juegos/:id", "/juegos/:id/jugar"],
+  matcher: [
+    // Todas las rutas salvo _next/static, _next/image, favicon.ico y archivos estáticos.
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|xml|webmanifest)$).*)",
+  ],
 };

@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { Courier_Prime, JetBrains_Mono, Press_Start_2P } from "next/font/google";
-import type { CSSProperties } from "react";
+import { Suspense, type CSSProperties } from "react";
 import { Footer } from "@/components/footer";
 import { Nav } from "@/components/nav";
+import { NavAccount, NavAccountPlaceholder } from "@/components/nav-account";
 import "./globals.css";
 
 const pressStart2P = Press_Start_2P({
@@ -58,7 +59,19 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <div className="av-bg" aria-hidden="true" />
         <div className="av-noise" aria-hidden="true" />
         <div id="root">
-          <Nav />
+          {/* La cuenta lee la sesión (cookies): se transmite detrás de <Suspense> y el resto del nav queda en el shell estático. */}
+          <Nav
+            account={
+              <Suspense fallback={<NavAccountPlaceholder variant="desktop" />}>
+                <NavAccount variant="desktop" />
+              </Suspense>
+            }
+            mobileAccount={
+              <Suspense fallback={<NavAccountPlaceholder variant="mobile" />}>
+                <NavAccount variant="mobile" />
+              </Suspense>
+            }
+          />
           <main className="av-main">{children}</main>
           <Footer />
         </div>
