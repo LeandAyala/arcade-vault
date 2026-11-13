@@ -10,12 +10,12 @@ type Section = "inicio" | "biblioteca" | "salon" | "about" | "auth";
  * Se usa el segmento activo (árbol de rutas que envía el servidor) en vez de `usePathname()`:
  * cuando `proxy.ts` reescribe un id inexistente a la 404, la URL del navegador no coincide con
  * la ruta renderizada y `usePathname()` provocaría un desajuste de hidratación.
- * "Acerca de" nunca se marca activo: su ruta todavía no existe.
  */
 function sectionFor(segment: string | null): Section | null {
   if (segment === null) return "inicio"; // "/"
   if (segment === "biblioteca" || segment === "juegos") return "biblioteca"; // "/biblioteca" y "/juegos/*"
   if (segment === "salon") return "salon";
+  if (segment === "acerca-de") return "about";
   if (segment === "auth") return "auth";
   return null;
 }
