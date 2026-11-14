@@ -1,21 +1,26 @@
-import type { ScoreRow } from "@/lib/data";
+import { LeaderboardEmpty } from "@/components/leaderboard-empty";
+import type { LeaderboardRow } from "@/lib/scores";
 
 const topClass = (i: number) => (i === 0 ? " top1" : i === 1 ? " top2" : i === 2 ? " top3" : "");
 
-export function Leaderboard({ scores }: { scores: ScoreRow[] }) {
+export function Leaderboard({ scores, gameId }: { scores: LeaderboardRow[]; gameId: string }) {
   return (
     <div className="leaderboard">
       <h3>MEJORES PUNTUACIONES</h3>
-      {scores.map((r, i) => (
-        <div key={r.name} className={"lb-row" + topClass(i)}>
-          <div className="rk">#{String(r.rank).padStart(2, "0")}</div>
-          <div className="pl">
-            {r.name}
-            <div style={{ fontSize: 10, color: "var(--ink-faint)", letterSpacing: "0.1em" }}>{r.date}</div>
+      {scores.length === 0 ? (
+        <LeaderboardEmpty gameId={gameId} compact />
+      ) : (
+        scores.map((r, i) => (
+          <div key={r.name} className={"lb-row" + topClass(i)}>
+            <div className="rk">#{String(r.rank).padStart(2, "0")}</div>
+            <div className="pl">
+              {r.name}
+              <div style={{ fontSize: 10, color: "var(--ink-faint)", letterSpacing: "0.1em" }}>{r.date}</div>
+            </div>
+            <div className="sc">{r.score.toLocaleString("es-ES")}</div>
           </div>
-          <div className="sc">{r.score.toLocaleString("es-ES")}</div>
-        </div>
-      ))}
+        ))
+      )}
     </div>
   );
 }

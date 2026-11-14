@@ -1,14 +1,48 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
-import { GAMES, seededScores } from "@/lib/data";
+import { useState } from "react";
+import { LeaderboardEmpty } from "@/components/leaderboard-empty";
+import type { LeaderboardRow } from "@/lib/scores";
 
 const topClass = (i: number) => (i === 0 ? " top1" : i === 1 ? " top2" : i === 2 ? " top3" : "");
 
-export function HallOfFame() {
-  const [tab, setTab] = useState(GAMES[0].id);
-  const rows = useMemo(() => seededScores(tab.length * 23 + 7, 12), [tab]);
+interface HallGame {
+  id: string;
+  title: string;
+}
+
+interface HallOfFameProps {
+  games: HallGame[];
+  leaderboards: Record<string, LeaderboardRow[]>;
+}
+
+/** Un puesto del podio. Sin jugador muestra huecos `---`. */
+function PodiumSlot({ row, place }: { row: LeaderboardRow | undefined; place: 1 | 2 | 3 }) {
+  const medal = place === 1 ? "gold" : place === 2 ? "silver" : "bronze";
+  const isGold = place === 1;
+  return (
+    <div className={`podium-slot ${medal}` + (row ? "" : " empty")}>
+      {isGold && (
+        <div className="pixel" style={{ fontSize: 9, color: "var(--gold)", letterSpacing: "0.18em" }}>
+          CAMPEÓN
+        </div>
+      )}
+      <div className="rank-num" style={isGold ? { fontSize: 36, marginTop: 4 } : undefined}>
+        {String(place).padStart(2, "0")}
+      </div>
+      <div className="name">{row ? row.name : "---"}</div>
+      <div className="score" style={isGold ? { fontSize: 20 } : undefined}>
+        {row ? row.score.toLocaleString("es-ES") : "---"}
+      </div>
+      <div className="date">{row ? row.date : "--/--/----"}</div>
+    </div>
+  );
+}
+
+export function HallOfFame({ games, leaderboards }: HallOfFameProps) {
+  const [tab, setTab] = useState(games[0]?.id ?? "");
+  const rows = leaderboards[tab] ?? [];
 
   return (
     <div className="av-hall fade-in">
@@ -20,7 +54,7 @@ export function HallOfFame() {
       </div>
 
       <div className="hall-tabs">
-        {GAMES.map((g) => (
+        {games.map((g) => (
           <button
             key={g.id}
             type="button"
@@ -32,50 +66,42 @@ export function HallOfFame() {
         ))}
       </div>
 
-      <div className="podium">
-        <div className="podium-slot silver">
-          <div className="rank-num">02</div>
-          <div className="name">{rows[1].name}</div>
-          <div className="score">{rows[1].score.toLocaleString("es-ES")}</div>
-          <div className="date">{rows[1].date}</div>
-        </div>
-        <div className="podium-slot gold">
-          <div className="pixel" style={{ fontSize: 9, color: "var(--gold)", letterSpacing: "0.18em" }}>
-            CAMPEÓN
+      {rows.length === 0 ? (
+        tab ? (
+          <div className="hall-empty">
+            <LeaderboardEmpty gameId={tab} />
           </div>
-          <div className="rank-num" style={{ fontSize: 36, marginTop: 4 }}>
-            01
+        ) : (
+          <div className="hall-empty">
+            <p className="lb-empty-title">CATÁLOGO NO DISPONIBLE</p>
           </div>
-          <div className="name">{rows[0].name}</div>
-          <div className="score" style={{ fontSize: 20 }}>
-            {rows[0].score.toLocaleString("es-ES")}
+        )
+      ) : (
+        <>
+          <div className="podium">
+            <PodiumSlot row={rows[1]} place={2} />
+            <PodiumSlot row={rows[0]} place={1} />
+            <PodiumSlot row={rows[2]} place={3} />
           </div>
-          <div className="date">{rows[0].date}</div>
-        </div>
-        <div className="podium-slot bronze">
-          <div className="rank-num">03</div>
-          <div className="name">{rows[2].name}</div>
-          <div className="score">{rows[2].score.toLocaleString("es-ES")}</div>
-          <div className="date">{rows[2].date}</div>
-        </div>
-      </div>
 
-      <div className="hall-table">
-        <div className="th">
-          <div>RANGO</div>
-          <div>JUGADOR</div>
-          <div>PUNTUACIÓN</div>
-          <div>FECHA</div>
-        </div>
-        {rows.map((r, i) => (
-          <div key={r.name + i} className={"tr" + topClass(i)} style={{ animationDelay: `${i * 50}ms` }}>
-            <div className="rk">#{String(r.rank).padStart(2, "0")}</div>
-            <div className="pl">{r.name}</div>
-            <div className="sc">{r.score.toLocaleString("es-ES")}</div>
-            <div className="dt">{r.date}</div>
+          <div className="hall-table">
+            <div className="th">
+              <div>RANGO</div>
+              <div>JUGADOR</div>
+              <div>PUNTUACIÓN</div>
+              <div>FECHA</div>
+            </div>
+            {rows.map((r, i) => (
+              <div key={r.name} className={"tr" + topClass(i)} style={{ animationDelay: `${i * 50}ms` }}>
+                <div className="rk">#{String(r.rank).padStart(2, "0")}</div>
+                <div className="pl">{r.name}</div>
+                <div className="sc">{r.score.toLocaleString("es-ES")}</div>
+                <div className="dt">{r.date}</div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </>
+      )}
 
       <div style={{ textAlign: "center", marginTop: 32 }}>
         <Link href="/biblioteca" className="btn lg">

@@ -3,15 +3,16 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { Leaderboard } from "@/components/leaderboard";
-import { GAMES, getGame, seededScores } from "@/lib/data";
+import { getGame, getGameParams } from "@/lib/catalog";
+import { EMPTY_STATS, LEADERBOARD_SIZE, getGameStats, getLeaderboard } from "@/lib/scores";
 
 export function generateStaticParams() {
-  return GAMES.map((g) => ({ id: g.id }));
+  return getGameParams();
 }
 
 export async function generateMetadata({ params }: PageProps<"/juegos/[id]">): Promise<Metadata> {
   const { id } = await params;
-  const game = getGame(id);
+  const game = await getGame(id);
   return game ? { title: `${game.title} · Arcade Vault`, description: game.short } : {};
 }
 
@@ -20,7 +21,7 @@ type Params = PageProps<"/juegos/[id]">["params"];
 /**
  * `params` se lee dentro de <Suspense>: con Partial Prefetching, la navegación en cliente usa
  * la carcasa genérica de /juegos/[id] (sin params) y leerlos fuera de un límite la bloquearía.
- * Los 8 ids de generateStaticParams se prerenderizan completos, así que el fallback solo se ve
+ * Los ids de generateStaticParams se prerenderizan completos, así que el fallback solo se ve
  * en navegaciones aún no prefetcheadas.
  */
 export default function GameDetailPage({ params }: PageProps<"/juegos/[id]">) {
@@ -33,10 +34,12 @@ export default function GameDetailPage({ params }: PageProps<"/juegos/[id]">) {
 
 async function GameDetail({ params }: { params: Params }) {
   const { id } = await params;
-  const game = getGame(id);
+  const game = await getGame(id);
   if (!game) notFound();
 
-  const scores = seededScores(id.length * 17 + 3, 10);
+  // Lecturas públicas cacheadas; saveScore las invalida con updateTag("scores").
+  const [scores, allStats] = await Promise.all([getLeaderboard(id, LEADERBOARD_SIZE.detail), getGameStats()]);
+  const stats = allStats[id] ?? EMPTY_STATS;
 
   return (
     <div className="av-detail fade-in">
@@ -56,12 +59,12 @@ async function GameDetail({ params }: { params: Params }) {
           <div className="stat-strip">
             <div>
               <div className="l">Partidas</div>
-              <div className="v">{game.plays}</div>
+              <div className="v">{stats.plays.toLocaleString("es-ES")}</div>
             </div>
             <div>
               <div className="l">Mejor global</div>
               <div className="v" style={{ color: "var(--magenta)", textShadow: "0 0 6px rgba(255,0,110,0.5)" }}>
-                {game.best.toLocaleString("es-ES")}
+                {stats.best === null ? "—" : stats.best.toLocaleString("es-ES")}
               </div>
             </div>
             <div>
@@ -83,7 +86,7 @@ async function GameDetail({ params }: { params: Params }) {
       </div>
 
       <aside>
-        <Leaderboard scores={scores} />
+        <Leaderboard scores={scores} gameId={game.id} />
       </aside>
     </div>
   );

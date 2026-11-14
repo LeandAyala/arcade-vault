@@ -4,8 +4,8 @@ import { FeatureIcon } from "@/components/feature-icon";
 import { FloatingSilhouettes } from "@/components/floating-silhouettes";
 import { MiniCard } from "@/components/mini-card";
 import { RevealObserver } from "@/components/reveal-observer";
+import { getGames } from "@/lib/catalog";
 import {
-  GAMES,
   HOME_FEATURES,
   HOME_STATS,
   PRICING_FAQ,
@@ -19,7 +19,9 @@ export const metadata: Metadata = {
 
 const TOP_CLASS = [" top1", " top2", " top3"];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const games = await getGames();
+
   return (
     <div className="home fade-in">
       <RevealObserver />
@@ -82,7 +84,7 @@ export default function HomePage() {
           <div className="section-rule"></div>
         </div>
         <div className="mini-rail">
-          {GAMES.slice(0, 6).map((g) => (
+          {games.slice(0, 6).map((g) => (
             <MiniCard key={g.id} game={g} />
           ))}
         </div>

@@ -893,10 +893,12 @@ a { color: inherit; text-decoration: none; }
   overflow: hidden;
   display: inline-block;
   border-right: 2px solid var(--green);
-  animation: typewriter 1.6s steps(22) forwards, caret 0.8s steps(1) infinite;
+  /* --chars: longitud del texto (el toast con puesto es más largo que el de SPEC 01). */
+  animation: typewriter 1.6s steps(var(--chars, 22)) forwards, caret 0.8s steps(1) infinite;
   width: 0;
+  max-width: 100%;
 }
-@keyframes typewriter { to { width: 22ch; } }
+@keyframes typewriter { to { width: calc(var(--chars, 22) * 1ch); } }
 @keyframes caret { 50% { border-color: transparent; } }
 
 /* ===== auth ===== */
@@ -1881,3 +1883,93 @@ a { color: inherit; text-decoration: none; }
 .faq-item:nth-child(3) { border-left-color: var(--yellow); }
 .faq-q { font-size: 10px; letter-spacing: 0.12em; color: var(--ink); margin-bottom: 8px; }
 .faq-a { font-family: var(--mono); font-size: 13px; color: var(--ink-dim); line-height: 1.6; }
+
+/* ===== SPEC 06 — leaderboard real ===== */
+
+/* Ranking vacío: marcador "fantasma" en modo attract, con un barrido de scanline. */
+.lb-empty {
+  position: relative;
+  padding: 28px 20px 26px;
+  text-align: center;
+  overflow: hidden;
+}
+.lb-empty-scan {
+  font-family: var(--pixel);
+  font-size: 11px;
+  line-height: 2.1;
+  letter-spacing: 0.08em;
+  color: var(--ink-faint);
+  opacity: 0.35;
+  margin-bottom: 18px;
+  user-select: none;
+}
+.lb-empty::after {
+  content: "";
+  position: absolute; left: 0; right: 0; top: -40%;
+  height: 40%;
+  background: linear-gradient(180deg, transparent, rgba(0,245,255,0.07), transparent);
+  animation: lb-sweep 3.2s linear infinite;
+  pointer-events: none;
+}
+@keyframes lb-sweep { to { top: 100%; } }
+.lb-empty-title {
+  margin: 0;
+  font-family: var(--pixel);
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  color: var(--magenta);
+  text-shadow: 0 0 8px rgba(255,0,110,0.55);
+}
+.lb-empty-sub {
+  margin: 10px 0 20px;
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  color: var(--yellow);
+  text-shadow: 0 0 6px rgba(245,255,0,0.4);
+}
+.lb-empty .btn { position: relative; z-index: 1; }
+.lb-empty.compact { padding: 22px 16px; }
+.lb-empty.compact .lb-empty-scan { font-size: 10px; }
+.lb-empty.compact .lb-empty-title { font-size: 11px; }
+
+.hall-empty {
+  border: 1px solid var(--line);
+  background: var(--bg-2);
+  max-width: 640px;
+  margin: 0 auto;
+}
+.hall-empty .lb-empty-scan { font-size: 13px; }
+.hall-empty .lb-empty-title { font-size: 15px; }
+.hall-empty > .lb-empty-title { padding: 40px 20px; text-align: center; }
+
+/* Puesto del podio sin jugador. */
+.podium-slot.empty { border-style: dashed; box-shadow: none; opacity: 0.45; }
+.podium-slot.empty .name, .podium-slot.empty .score { color: var(--ink-faint); text-shadow: none; }
+
+/* Modal FIN DEL JUEGO sin sesión: guardar está bloqueado. */
+.save-locked {
+  margin: 22px 0 12px;
+  padding: 16px;
+  border: 1px dashed var(--yellow);
+  background: rgba(245,255,0,0.04);
+}
+.save-locked-link {
+  font-family: var(--pixel);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--yellow);
+  text-shadow: 0 0 8px rgba(245,255,0,0.55);
+  text-decoration: none;
+}
+.save-locked-link:hover, .save-locked-link:focus-visible { text-decoration: underline; text-underline-offset: 4px; }
+.save-locked p { margin: 10px 0 0; font-family: var(--mono); font-size: 12px; color: var(--ink-dim); }
+.modal .input-row input[readonly] { color: var(--ink); cursor: default; border-style: dashed; }
+.modal .input-row .btn:disabled { cursor: not-allowed; opacity: 0.6; }
+.modal .input-row .btn[aria-busy="true"] { cursor: wait; }
+.modal-error { margin: 0 0 6px; text-align: left; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lb-empty::after { animation: none; display: none; }
+  .toast-saved { animation: none; width: auto; border-right-color: transparent; }
+}
