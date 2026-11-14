@@ -1,9 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
+import {
+  useActionState,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type MouseEvent,
+  type ReactNode,
+} from "react";
+import { saveScore, type SaveScoreState } from "@/app/juegos/[id]/jugar/actions";
 import { AsteroidsScreen } from "@/components/asteroids-screen";
-import type { Game } from "@/lib/data";
+import type { Game } from "@/lib/catalog";
 import { formatScore, type AsteroidsGame, type AsteroidsSnapshot } from "@/lib/games/asteroids/engine";
 
 type PlayerGame = Pick<Game, "id" | "title">;
@@ -11,12 +21,14 @@ type PlayerGame = Pick<Game, "id" | "title">;
 /** Id del único juego real por ahora; el resto usa la simulación de SPEC 01. */
 const ASTEROIDS_ID = "asteroides";
 
-export function GamePlayer({ game, playerName }: { game: PlayerGame; playerName: string }) {
-  return game.id === ASTEROIDS_ID ? (
-    <AsteroidsPlayer game={game} playerName={playerName} />
-  ) : (
-    <SimulatedPlayer game={game} />
-  );
+interface GamePlayerProps {
+  game: PlayerGame;
+  playerName: string; // alias en mayúsculas o INVITADO
+  hasSession: boolean;
+}
+
+export function GamePlayer(props: GamePlayerProps) {
+  return props.game.id === ASTEROIDS_ID ? <AsteroidsPlayer {...props} /> : <SimulatedPlayer {...props} />;
 }
 
 // ── Piezas compartidas ───────────────────────────────────────────────────────
@@ -104,37 +116,88 @@ function Crt({ title, children }: { title: string; children: ReactNode }) {
 }
 
 interface GameOverModalProps {
+  gameId: string;
   score: number;
-  name: string;
-  onNameChange: (name: string) => void;
-  saved: boolean;
-  onSave: () => void;
+  playerName: string;
+  hasSession: boolean;
   onRestart: () => void;
 }
 
-function GameOverModal({ score, name, onNameChange, saved, onSave, onRestart }: GameOverModalProps) {
+const IDLE: SaveScoreState = { status: "idle" };
+
+/** Texto del toast; sin puesto (no se pudo leer) queda el mensaje corto. */
+function savedText(rank: number): string {
+  return rank > 0
+    ? `▸ PUNTUACIÓN GUARDADA · PUESTO #${String(rank).padStart(2, "0")}_`
+    : "▸ PUNTUACIÓN GUARDADA_";
+}
+
+/**
+ * Modal FIN DEL JUEGO. Se monta al terminar cada partida y se desmonta al reiniciar, así que el
+ * estado de guardado (una vez por partida) se reinicia solo.
+ */
+function GameOverModal({ gameId, score, playerName, hasSession, onRestart }: GameOverModalProps) {
+  const [state, formAction, isPending] = useActionState(saveScore, IDLE);
+  const canSave = score > 0;
+
+  let saveArea: ReactNode;
+  if (!hasSession) {
+    saveArea = (
+      <div className="save-locked">
+        <Link href="/auth" className="save-locked-link">
+          INICIA SESIÓN PARA GUARDAR
+        </Link>
+        <p>Tu alias aparecerá en el Salón de la Fama.</p>
+      </div>
+    );
+  } else if (state.status === "saved") {
+    const text = savedText(state.rank);
+    saveArea = (
+      <div className="toast-saved" role="status" style={{ "--chars": text.length } as CSSProperties}>
+        {text}
+      </div>
+    );
+  } else {
+    saveArea = (
+      <form action={formAction}>
+        <input type="hidden" name="gameId" value={gameId} />
+        <input type="hidden" name="score" value={score} />
+        <div className="input-row">
+          <input value={playerName} readOnly aria-label="Tu alias" tabIndex={-1} />
+          <button
+            type="submit"
+            className="btn yellow"
+            disabled={!canSave || isPending}
+            aria-busy={isPending}
+          >
+            {isPending ? (
+              <>
+                <span className="spinner" aria-hidden="true" style={{ marginRight: 10, verticalAlign: "middle" }}></span>
+                GUARDANDO…
+              </>
+            ) : canSave ? (
+              "GUARDAR PUNTUACIÓN"
+            ) : (
+              "SIN PUNTOS QUE GUARDAR"
+            )}
+          </button>
+        </div>
+        {state.status === "error" && !isPending && (
+          <div className="auth-error modal-error" role="alert">
+            [ERR] {state.message}
+          </div>
+        )}
+      </form>
+    );
+  }
+
   return (
     <div className="modal-bd">
       <div className="modal" role="dialog" aria-modal="true" aria-label="Fin del juego">
         <h2>FIN DEL JUEGO</h2>
         <div className="final-label">PUNTUACIÓN FINAL</div>
         <div className="final">{formatScore(score)}</div>
-        {!saved ? (
-          <div className="input-row">
-            <input
-              value={name}
-              onChange={(e) => onNameChange(e.target.value.toUpperCase().slice(0, 10))}
-              placeholder="TUS INICIALES"
-              aria-label="Tus iniciales"
-            />
-            {/* Sin persistencia todavía: solo muestra el toast. */}
-            <button type="button" className="btn yellow" onClick={onSave}>
-              GUARDAR PUNTUACIÓN
-            </button>
-          </div>
-        ) : (
-          <div className="toast-saved">▸ PUNTUACIÓN GUARDADA_</div>
-        )}
+        {saveArea}
         <div className="actions">
           <button type="button" className="btn" onClick={onRestart}>
             JUGAR DE NUEVO
@@ -152,12 +215,10 @@ function GameOverModal({ score, name, onNameChange, saved, onSave, onRestart }: 
 
 const INITIAL_SNAPSHOT: AsteroidsSnapshot = { phase: "ready", paused: false, score: 0, lives: 3, level: 1 };
 
-function AsteroidsPlayer({ game, playerName }: { game: PlayerGame; playerName: string }) {
+function AsteroidsPlayer({ game, playerName, hasSession }: GamePlayerProps) {
   const gameRef = useRef<AsteroidsGame | null>(null);
   const [snapshot, setSnapshot] = useState<AsteroidsSnapshot>(INITIAL_SNAPSHOT);
   const [over, setOver] = useState(false);
-  const [name, setName] = useState(playerName);
-  const [saved, setSaved] = useState(false);
 
   const onChange = useCallback((s: AsteroidsSnapshot) => setSnapshot(s), []);
   const canPause = !over && (snapshot.phase === "playing" || snapshot.phase === "dead");
@@ -170,7 +231,6 @@ function AsteroidsPlayer({ game, playerName }: { game: PlayerGame; playerName: s
   const restart = () => {
     gameRef.current?.restart();
     setOver(false);
-    setSaved(false);
   };
 
   return (
@@ -194,11 +254,10 @@ function AsteroidsPlayer({ game, playerName }: { game: PlayerGame; playerName: s
 
       {over && (
         <GameOverModal
+          gameId={game.id}
           score={snapshot.score}
-          name={name}
-          onNameChange={setName}
-          saved={saved}
-          onSave={() => setSaved(true)}
+          playerName={playerName}
+          hasSession={hasSession}
           onRestart={restart}
         />
       )}
@@ -222,13 +281,11 @@ function tick(run: Run): Run {
   return { score, level };
 }
 
-function SimulatedPlayer({ game }: { game: PlayerGame }) {
+function SimulatedPlayer({ game, playerName, hasSession }: GamePlayerProps) {
   const [run, setRun] = useState<Run>(INITIAL_RUN);
   const [lives, setLives] = useState(3);
   const [paused, setPaused] = useState(false);
   const [over, setOver] = useState(false);
-  const [name, setName] = useState("INVITADO");
-  const [saved, setSaved] = useState(false);
   const { score, level } = run;
 
   useEffect(() => {
@@ -243,14 +300,13 @@ function SimulatedPlayer({ game }: { game: PlayerGame }) {
     setLives(3);
     setPaused(false);
     setOver(false);
-    setSaved(false);
   };
 
   return (
     <div className="av-player fade-in">
       <PlayerHud
         game={game}
-        name={name}
+        name={playerName}
         score={score}
         lives={lives}
         level={level}
@@ -273,11 +329,10 @@ function SimulatedPlayer({ game }: { game: PlayerGame }) {
 
       {over && (
         <GameOverModal
+          gameId={game.id}
           score={score}
-          name={name}
-          onNameChange={setName}
-          saved={saved}
-          onSave={() => setSaved(true)}
+          playerName={playerName}
+          hasSession={hasSession}
           onRestart={restart}
         />
       )}

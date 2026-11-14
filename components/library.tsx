@@ -2,18 +2,22 @@
 
 import { useMemo, useState } from "react";
 import { GameCard } from "@/components/game-card";
-import { CATS, GAMES, type CategoryFilter } from "@/lib/data";
+import type { Game } from "@/lib/catalog";
+import { CATS, type CategoryFilter } from "@/lib/data";
+import type { GameStats } from "@/lib/scores";
 
-export function Library() {
+const NO_STATS: GameStats = { best: null, plays: 0 };
+
+export function Library({ games, stats }: { games: Game[]; stats: Record<string, GameStats> }) {
   const [q, setQ] = useState("");
   const [cat, setCat] = useState<CategoryFilter>("TODOS");
 
   const filtered = useMemo(
     () =>
-      GAMES.filter(
+      games.filter(
         (g) => (cat === "TODOS" || g.cat === cat) && g.title.toLowerCase().includes(q.toLowerCase()),
       ),
-    [q, cat],
+    [games, q, cat],
   );
 
   return (
@@ -44,7 +48,7 @@ export function Library() {
 
       <div className="av-grid">
         {filtered.map((g) => (
-          <GameCard key={g.id} game={g} />
+          <GameCard key={g.id} game={g} stats={stats[g.id] ?? NO_STATS} />
         ))}
         {filtered.length === 0 && (
           <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: 80, color: "var(--ink-faint)" }}>

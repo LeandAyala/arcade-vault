@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 
@@ -7,6 +8,8 @@ export interface UpdateSessionResult {
   response: NextResponse;
   /** `true` si hay un usuario con un JWT válido. */
   hasUser: boolean;
+  /** Cliente de la petición (para consultas ligeras en el proxy), o `null` sin variables de entorno. */
+  supabase: SupabaseClient | null;
 }
 
 /**
@@ -18,7 +21,7 @@ export interface UpdateSessionResult {
  */
 export async function updateSession(request: NextRequest): Promise<UpdateSessionResult> {
   const env = getSupabaseEnv();
-  if (!env) return { response: NextResponse.next(), hasUser: false };
+  if (!env) return { response: NextResponse.next(), hasUser: false, supabase: null };
 
   let response = NextResponse.next({ request });
 
@@ -40,10 +43,10 @@ export async function updateSession(request: NextRequest): Promise<UpdateSession
   // si caducó, lo refresca (y dispara setAll).
   try {
     const { data, error } = await supabase.auth.getClaims();
-    return { response, hasUser: !error && Boolean(data?.claims?.sub) };
+    return { response, hasUser: !error && Boolean(data?.claims?.sub), supabase };
   } catch (err) {
     console.error("[auth] No se pudo refrescar la sesión en el proxy:", err);
-    return { response, hasUser: false };
+    return { response, hasUser: false, supabase };
   }
 }
 
