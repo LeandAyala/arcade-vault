@@ -2,10 +2,12 @@
 // de SPEC 01 en el reproductor. Para añadir un juego: `/nuevo-juego` genera su spec.
 
 import { asteroidsDef } from "./asteroids";
+import { bloqueBusterDef } from "./bloque-buster";
 import { caidaDef } from "./caida";
 import type { RealGameDef } from "./types";
 
 export const REAL_GAMES: Readonly<Record<string, RealGameDef>> = {
   [asteroidsDef.id]: asteroidsDef,
   [caidaDef.id]: caidaDef,
+  [bloqueBusterDef.id]: bloqueBusterDef,
 };
