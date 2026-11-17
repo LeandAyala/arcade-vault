@@ -12,14 +12,12 @@ import {
   type ReactNode,
 } from "react";
 import { saveScore, type SaveScoreState } from "@/app/juegos/[id]/jugar/actions";
-import { AsteroidsScreen } from "@/components/asteroids-screen";
+import { GameScreen } from "@/components/game-screen";
 import type { Game } from "@/lib/catalog";
-import { formatScore, type AsteroidsGame, type AsteroidsSnapshot } from "@/lib/games/asteroids/engine";
+import { REAL_GAMES } from "@/lib/games/registry";
+import { formatScore, type GameEngine, type GameSnapshot, type RealGameDef } from "@/lib/games/types";
 
 type PlayerGame = Pick<Game, "id" | "title">;
-
-/** Id del único juego real por ahora; el resto usa la simulación de SPEC 01. */
-const ASTEROIDS_ID = "asteroides";
 
 interface GamePlayerProps {
   game: PlayerGame;
@@ -27,8 +25,10 @@ interface GamePlayerProps {
   hasSession: boolean;
 }
 
+/** Juegos del registro → motor real; el resto usa la simulación de SPEC 01. */
 export function GamePlayer(props: GamePlayerProps) {
-  return props.game.id === ASTEROIDS_ID ? <AsteroidsPlayer {...props} /> : <SimulatedPlayer {...props} />;
+  const def = REAL_GAMES[props.game.id];
+  return def ? <RealGamePlayer {...props} def={def} /> : <SimulatedPlayer {...props} />;
 }
 
 // ── Piezas compartidas ───────────────────────────────────────────────────────
@@ -37,12 +37,28 @@ interface HudProps {
   game: PlayerGame;
   name: string;
   score: number;
-  lives: number;
+  lives: number | null; // null = el juego no tiene vidas
   level: number;
+  /** Casillas propias del juego tras `Nivel` (p. ej. `Líneas`). */
+  extras: HudExtraValue[];
   paused: boolean;
   canPause: boolean;
   onTogglePause: () => void;
   onEnd: () => void;
+}
+
+interface HudExtraValue {
+  key: string;
+  label: string;
+  value: number;
+}
+
+const NO_EXTRAS: HudExtraValue[] = [];
+
+/** Une las casillas declaradas por el juego con los valores del snapshot (0 si aún no llegan). */
+function hudExtrasOf(def: RealGameDef, snapshot: GameSnapshot): HudExtraValue[] {
+  if (!def.hudExtras) return NO_EXTRAS;
+  return def.hudExtras.map(({ key, label }) => ({ key, label, value: snapshot.extra?.[key] ?? 0 }));
 }
 
 /** Quita el foco del botón tras el click: así Espacio vuelve a ser del juego. */
@@ -51,7 +67,7 @@ const blurAfter = (fn: () => void) => (e: MouseEvent<HTMLButtonElement>) => {
   fn();
 };
 
-function PlayerHud({ game, name, score, lives, level, paused, canPause, onTogglePause, onEnd }: HudProps) {
+function PlayerHud({ game, name, score, lives, level, extras, paused, canPause, onTogglePause, onEnd }: HudProps) {
   return (
     <div className="player-hud">
       <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
@@ -65,12 +81,18 @@ function PlayerHud({ game, name, score, lives, level, paused, canPause, onToggle
         </div>
         <div className="hud-stat lives">
           <div className="l">Vidas</div>
-          <div className="v">{"♥ ".repeat(lives).trim() || "—"}</div>
+          <div className="v">{lives === null ? "—" : "♥ ".repeat(lives).trim() || "—"}</div>
         </div>
         <div className="hud-stat level">
           <div className="l">Nivel</div>
           <div className="v">{String(level).padStart(2, "0")}</div>
         </div>
+        {extras.map((x) => (
+          <div key={x.key} className="hud-stat extra">
+            <div className="l">{x.label}</div>
+            <div className="v">{formatScore(x.value)}</div>
+          </div>
+        ))}
       </div>
       <div className="hud-actions">
         <button type="button" className="btn yellow" onClick={blurAfter(onTogglePause)} disabled={!canPause}>
@@ -211,25 +233,27 @@ function GameOverModal({ gameId, score, playerName, hasSession, onRestart }: Gam
   );
 }
 
-// ── ASTEROIDES (juego real) ──────────────────────────────────────────────────
+// ── Juegos reales (lib/games/registry.ts) ────────────────────────────────────
 
-const INITIAL_SNAPSHOT: AsteroidsSnapshot = { phase: "ready", paused: false, score: 0, lives: 3, level: 1 };
-
-function AsteroidsPlayer({ game, playerName, hasSession }: GamePlayerProps) {
-  const gameRef = useRef<AsteroidsGame | null>(null);
-  const [snapshot, setSnapshot] = useState<AsteroidsSnapshot>(INITIAL_SNAPSHOT);
+function RealGamePlayer({ game, def, playerName, hasSession }: GamePlayerProps & { def: RealGameDef }) {
+  const engineRef = useRef<GameEngine | null>(null);
+  const [snapshot, setSnapshot] = useState<GameSnapshot>(def.initialSnapshot);
   const [over, setOver] = useState(false);
 
-  const onChange = useCallback((s: AsteroidsSnapshot) => setSnapshot(s), []);
+  // GAME OVER del motor abre el modal igual que FIN: el modal es el único camino para guardar.
+  const onChange = useCallback((s: GameSnapshot) => {
+    setSnapshot(s);
+    if (s.phase === "gameover") setOver(true);
+  }, []);
   const canPause = !over && (snapshot.phase === "playing" || snapshot.phase === "dead");
 
   const endGame = () => {
-    gameRef.current?.pause();
+    engineRef.current?.pause();
     setOver(true);
   };
 
   const restart = () => {
-    gameRef.current?.restart();
+    engineRef.current?.restart();
     setOver(false);
   };
 
@@ -241,15 +265,22 @@ function AsteroidsPlayer({ game, playerName, hasSession }: GamePlayerProps) {
         score={snapshot.score}
         lives={snapshot.lives}
         level={snapshot.level}
+        extras={hudExtrasOf(def, snapshot)}
         paused={snapshot.paused}
         canPause={canPause}
-        onTogglePause={() => gameRef.current?.togglePause()}
+        onTogglePause={() => engineRef.current?.togglePause()}
         onEnd={endGame}
       />
 
       <Crt title={game.title}>
-        <AsteroidsScreen gameRef={gameRef} onChange={onChange} phase={snapshot.phase} inputEnabled={!over} />
-        {snapshot.paused && !over && <PauseOverlay hint="PULSA REANUDAR, P O ESC PARA CONTINUAR" />}
+        <GameScreen
+          def={def}
+          engineRef={engineRef}
+          onChange={onChange}
+          phase={snapshot.phase}
+          inputEnabled={!over}
+        />
+        {snapshot.paused && !over && <PauseOverlay hint={def.pauseHint} />}
       </Crt>
 
       {over && (
@@ -310,6 +341,7 @@ function SimulatedPlayer({ game, playerName, hasSession }: GamePlayerProps) {
         score={score}
         lives={lives}
         level={level}
+        extras={NO_EXTRAS}
         paused={paused}
         canPause
         onTogglePause={() => setPaused((p) => !p)}

@@ -18,37 +18,13 @@ import {
   asteroidsForLevel,
 } from "./constants";
 import { Asteroid, Bullet, PARTICLE_RGB, Particle, PowerUp, Ship, dist, rand } from "./entities";
+import { formatScore, type EngineOptions, type GameEngine, type GamePhase, type GameSnapshot } from "../types";
 
-export type AsteroidsPhase = "ready" | "playing" | "dead" | "gameover";
-
-/** Lo que el motor comunica al HUD React. */
-export interface AsteroidsSnapshot {
-  phase: AsteroidsPhase;
-  paused: boolean;
-  score: number;
-  lives: number; // 0..3
-  level: number; // >= 1
-}
-
-export interface AsteroidsOptions {
-  /** Se llama solo cuando cambia algún campo del snapshot (nunca 60 veces por segundo). */
-  onChange: (snapshot: AsteroidsSnapshot) => void;
-}
-
-export interface AsteroidsGame {
-  start(): void; // ready → playing
-  restart(): void; // cualquier fase → playing, score 0, vidas 3, nivel 1
-  pause(): void;
-  resume(): void;
-  togglePause(): void;
-  /** Con `false` el motor ignora el teclado (p. ej. con el modal de FIN abierto). */
-  setInputEnabled(enabled: boolean): void;
-  getSnapshot(): AsteroidsSnapshot;
-  destroy(): void; // cancela rAF y quita todos los listeners
-}
-
-/** Formato de puntuación compartido con el HUD React, para que ambos HUD coincidan. */
-export const formatScore = (score: number) => score.toLocaleString("es-ES");
+// El motor implementa el contrato común de `lib/games/types.ts` (vidas 0..3, nunca `null`).
+export type AsteroidsPhase = GamePhase;
+export type AsteroidsSnapshot = GameSnapshot;
+export type AsteroidsOptions = EngineOptions;
+export type AsteroidsGame = GameEngine;
 
 /** Teclas cuyo comportamiento por defecto (scroll) se anula mientras se juega. */
 const GAME_KEYS = new Set(["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Space"]);
@@ -204,11 +180,8 @@ export function createAsteroidsGame(canvas: HTMLCanvasElement, options: Asteroid
       return;
     }
 
+    // Sin reinicio por teclado: el reproductor abre el modal y reinicia con JUGAR DE NUEVO.
     if (phase === "gameover") {
-      if (pressed("Space")) {
-        restart();
-        return;
-      }
       updateParticles(dt);
       return;
     }
@@ -357,7 +330,8 @@ export function createAsteroidsGame(canvas: HTMLCanvasElement, options: Asteroid
     ctx.shadowBlur = 0;
     ctx.font = `15px ${monoFont}`;
     ctx.fillStyle = PALETTE.ink;
-    ctx.fillText(`PUNTAJE: ${formatScore(score)}   —   ESPACIO PARA REINICIAR`, W / 2, H / 2 + 32);
+    // El reproductor abre el modal FIN DEL JUEGO encima; el reinicio va por JUGAR DE NUEVO.
+    ctx.fillText(`PUNTAJE: ${formatScore(score)}`, W / 2, H / 2 + 32);
     ctx.restore();
   }
 
