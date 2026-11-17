@@ -87,4 +87,4 @@ update public.games set title = '…', long = '…' where id = '…';
 | --- | --- | --- |
 | `02-asteroids` | `asteroides` | Ya integrado (SPEC 05). |
 | `03-tetris` | `caida` (PUZZLE, `cover-tetro`) | Ya integrado (SPEC 07, `lib/games/caida/`, stat extra `lines`). Tablero 300×600 vertical + preview "siguiente": rediseñar a 800×600 con panel lateral en canvas. Sin vidas → `lives: null`. Puntos `[0,100,300,500,800] × nivel`, soft drop +1/fila, hard drop +2/celda. Usa `↑`/`X` para rotar y Espacio para hard drop: Espacio también inicia desde `ready` (sin conflicto). |
-| `04-arkanoid` | `bloque-buster` (ARCADE, `cover-bricks`) | 800×600. +10 por bloque, 3 vidas, 5 niveles en `levels.js`, estado `win` → `gameover`. Sonidos y spritesheet en `assets/`; menú de niveles en la pausa (descartar). Ratón para la pala. |
+| `04-arkanoid` | `bloque-buster` (ARCADE, `cover-bricks`) | Ya integrado (SPEC 08, `lib/games/bloque-buster/`). 800×600. +10 por bloque, 3 vidas, 5 niveles en `levels.js`, estado `win` → `gameover`. Sonidos y spritesheet en `assets/`; menú de niveles en la pausa (descartar). Ratón para la pala. |
