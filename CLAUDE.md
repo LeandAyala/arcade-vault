@@ -29,8 +29,16 @@ No hay framework de tests configurado todavía: la verificación es `lint` + `ts
 
 - **Usa siempre `/frontend-design` para diseñar interfaces de usuario** (también al dibujar el canvas de un juego nuevo).
 - `/spec` y `/spec-impl` ([Klerith/fernando-skills](https://github.com/Klerith/fernando-skills)): crear una spec y luego implementarla. `/spec-impl` crea la rama `spec-NN-slug` automáticamente (`specs/.spec-config.yml` → `AutoCreateBranch: true`).
-- `/nuevo-juego <carpeta de started-games o descripción>` (skill propia): genera una spec `Borrador` para integrar un juego real con catálogo y leaderboard. Es una especialización de `/spec`; su contrato técnico está en `.claude/skills/nuevo-juego/reference/integration.md`.
+- `/nuevo-juego <carpeta de started-games o descripción>` (skill propia): genera una spec `Borrador` para integrar un juego real con catálogo y leaderboard. Es una especialización de `/spec`; su contrato técnico está en `.claude/skills/nuevo-juego/reference/integration.md`. Si el usuario aún no ha decidido qué juego hacer, consulta antes al agente `game-planner` (ver "Agentes").
 - Las skills viven en `.claude/skills/` y duplicadas en `.agents/skills/` (instaladas con `npx skills`, ver `skills-lock.json`). Si modificas una, mantén ambas copias iguales.
+
+## Agentes
+
+- **Usa siempre el subagente `game-planner` para decidir qué juego añadir.** Cuando el usuario pida ideas, sugerencias o "el siguiente juego", o quiera marcar una sugerencia como aceptada o descartada, delega en `game-planner` (herramienta Agent, `subagent_type: "game-planner"`) en lugar de proponer juegos tú mismo.
+- `game-planner` (`.claude/agents/game-planner.md`, Opus) analiza el catálogo, las categorías, los colores, los juegos registrados y el contrato de motores. Propone de 1 a 3 juegos con su encaje. No escribe código ni specs.
+- Memoria: recuerda sus sugerencias, las decisiones y las preferencias del usuario en `.claude/agent-memory/game-planner/` (`memory: project`, versionada en git).
+- ToDo: mantiene `references/game-suggestions-todo.md` (Pendientes · En spec · Implementados · Descartados). Al crear o implementar la spec de un juego sugerido, el agente lo mueve de sección en su siguiente invocación.
+- Flujo para un juego nuevo: `game-planner` (decidir) → `/nuevo-juego` (spec `Borrador`) → revisar y aprobar → `/spec-impl` (implementar).
 
 ## Specs
 
